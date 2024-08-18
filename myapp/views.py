@@ -11,8 +11,9 @@ from django.http import JsonResponse
 from celery.result import AsyncResult
 from config.celery import app
 from datetime import datetime, timedelta
-import logging
+import logging,time
 from decouple import config
+from .calculations import convert_to_xy
 
 api_keys = config('OPENAI_API')
 logger = logging.getLogger('mysite')
@@ -87,17 +88,57 @@ def get_base_datetime():
 def index(request):
     base_date, base_time = get_base_datetime()
     date_time_str = f"{base_date} {base_time}"
-    if not Weather.objects.filter(date_time=date_time_str).exists(): # 최근 날씨 데이터 조회
-        # get_base_datetime함수 기준, 최근 날씨 데이터가 없으면 Celery 작업을 추가/로딩 화면을 표시
-        context = {}
-        return render(request, 'app/loading.html', context)
-    # 최근 날씨 데이터가 있으면 로딩 화면 없이 바로 표시
-    # latest_weather = Weather.objects.filter(date_time=date_time_str)
-    latest_weather = Weather.objects.latest('recorded')  # 또는 .first() 메서드 사용 가능
-    facts = parse_weather_data(latest_weather.data)
-    res = weatherman(facts, "informal", 100, "news flash", str(timezone.now()))
-    context = {'gpt_weather': res, 'original_weather': json.dumps(facts), 'current_time': str(timezone.now())}
-    return render(request, 'app/weather_cast.html', context)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            latitude = data.get('latitude')
+            longitude = data.get('longitude')
+            lat,lon = convert_to_xy(float(longitude),float(latitude))
+            location = f"{lat},{lon}"
+
+            if not Weather.objects.filter(date_time=date_time_str, location=location).exists():
+                # Celery 작업 추가
+                task = task_add.delay(latitude, longitude, base_date, base_time)
+                # 작업 ID를 반환하여 클라이언트에서 이후 작업을 계속하도록 유도
+                return JsonResponse({'task_id': task.id}, status=200)
+
+            latest_weather = Weather.objects.filter(
+                date_time=date_time_str, location=location).latest('recorded')
+            facts = parse_weather_data(latest_weather.data)
+            res = weatherman(facts, "informal", 100, "news flash", str(timezone.now()))
+            context = {
+                'gpt_weather': res,
+                'original_weather': json.dumps(facts),
+                'current_time': str(timezone.now())
+            }
+            return render(request, 'app/weather_cast.html', context)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid data'}, status=400)
+
+    elif request.method == 'GET':
+        latitude = request.GET.get('latitude')
+        longitude = request.GET.get('longitude')
+        location = ""
+        if latitude and longitude:
+            lat,lon = convert_to_xy(float(longitude),float(latitude))
+            location = f"{lat},{lon}"
+
+        if location and Weather.objects.filter(date_time=date_time_str, location=location).exists():
+            latest_weather = Weather.objects.filter(
+                date_time=date_time_str, location=location).latest('recorded')
+            facts = parse_weather_data(latest_weather.data)
+            res = weatherman(facts, "informal", 100, "news flash", str(timezone.now()))
+            context = {
+                'gpt_weather': res,
+                'original_weather': json.dumps(facts),
+                'current_time': str(timezone.now())
+            }
+            return render(request, 'app/weather_cast.html', context)
+        else:
+            return render(request, 'app/loading.html', {})
+    return render(request,'app/loading.html',{})
+
 
 def task_status(request, task_id):
     try:
