@@ -1,0 +1,52 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" type="text/css" href="{% static 'style.css' %}">
+    <title>Weather Forecast</title>
+</head>
+<body>
+    <div class="back-ground"></div>
+    <div class="container">
+        <h1 class="txt"><img src="{% static 'icon/sample.png' %}" id="main-icon" class="icon">Weather Forecast</h1>
+        <h2 class="txt">Hourly Forecast</h2>
+        <table id="weather-table">
+            <tr id="time-header-row">
+                <th>Time</th>
+            </tr>
+            <tr id="weather-summary-row">
+                <th>Weather Summary</th>
+            </tr>
+        </table>
+        <table>
+            <tr id="option-row">
+                <th id="wind-speed" class="bar-part" data-type="windSpeed">Wind Speed</th>
+                <th id="precipitation" class="bar-part" data-type="precipitation">Precipitation</th>
+                <th id="humidity" class="bar-part" data-type="humidity">Humidity</th>
+                <th id="temperature" class="bar-part" data-type="temperature">Temperature</th>
+            </tr>
+        </table>
+        <div class="info-container">
+            <div id="info-display">
+                <canvas id="temperature-chart"></canvas>
+            </div>
+            <div class="gpt-weather-container txt">
+                <h2>GPT Weather Summary</h2>
+                <p id="gpt-weather">{{ gpt_weather }}</p>
+            </div>
+        </div>
+    </div>
+
+    <script id="weather-data" type="application/json">
+        {{ original_weather|safe }}
+    </script>
+    <script id="current-time">
+        {{ current_time|safe }}
+    </script>
+    <script src="{% static 'weather_cast.js' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</body>
+</html>

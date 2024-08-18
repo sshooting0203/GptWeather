@@ -1,0 +1,86 @@
+<!-- templates/app/loading.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Loading...</title>
+     <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+			const lat = position.coords.latitude; 
+                	const lng = position.coords.longitude; 
+                        fetch('/save-location/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': getCookie('csrftoken')  
+                            },
+                            body: JSON.stringify({ latitude: lat, longitude: lng })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            // console.log('Location saved:', data);
+                            // 위치 정보가 저장된 후 Celery 작업 상태 확인 시작
+                            document.getElementById('loading-message').innerText = 'Start Checking TaskStatus!';
+			    const taskId = data.task_id;  
+		            checkTaskStatus(taskId);  // Django 템플릿에서 task_id를 삽입
+                        })
+                        .catch(error => console.error('Error:', error));
+                    },
+                    function(error) {
+                        console.error('Error obtaining location:', error);
+                    }
+                );
+            } else {
+                console.error('Not supported by this browser');
+            }
+        });
+
+        // CSRF 토큰을 가져오는 함수
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Celery 작업 상태를 확인하는 함수
+        function checkTaskStatus(taskId) {
+            fetch(`/task-status/${taskId}/`)
+		.then(response=>{
+		    return response.json();
+		})
+                .then(data => {
+                    if (data.status === 'SUCCESS') {
+                        // 성공적으로 작업이 완료된 경우 결과 페이지로 리다이렉트
+                        window.location.href = '/';
+                    } else if (data.status === 'FAILURE') {
+                        // 작업 실패 처리
+                        document.getElementById('loading-message').innerText = 'Failed to fetch weather data.';
+                    } else {
+                        // 작업이 아직 진행 중인 경우
+                        setTimeout(() => checkTaskStatus(taskId), 2000); // 2초 후 상태 확인
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('loading-message').innerText = 'An error occurred while fetching the task status.';
+                });
+        }
+    </script>
+</head>
+<body>
+    <h1>Loading...</h1>
+    <p id="loading-message">Fetching weather data, please wait...</p>
+</body>
+</html>
