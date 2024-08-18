@@ -20,17 +20,23 @@
                             },
                             body: JSON.stringify({ latitude: lat, longitude: lng })
                         })
-                        .then(response => {
-                            if (!response.ok) {
-                                throw new Error('Network response was not ok');
-                            }
-                            return response.json();
-                        })
+			.then(response => {
+    				if (!response.ok) {
+        				throw new Error('Network response was not ok');
+    				}
+        			return response.json();
+			})
                         .then(data => {
-                            const taskId = data.task_id;
-			    console.log("Task ID : ",taskId);
-                            document.getElementById('loading-message').innerText = 'Fetching weather data, please wait...';
-                            checkTaskStatus(taskId, lat, lng);  // Celery 작업 상태 확인
+			    if(data.status==='EXIST'){
+			        document.getElementById('loading-message').innerText = 'Weather data already available.';
+				window.location.href=`\?latitude=${lat}&longitude=${lon}`
+			    }
+			    else if(data.task_id){
+				const taskId = data.task_id;
+			        console.log("Task ID : ",taskId);
+                                document.getElementById('loading-message').innerText = 'Fetching weather data, please wait...';
+                                checkTaskStatus(taskId, lat, lng);  // Celery 작업 상태 확인
+			    }
                         })
                         .catch(error => {
                             console.error('Error:', error);

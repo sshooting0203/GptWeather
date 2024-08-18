@@ -102,20 +102,10 @@ def index(request):
                 task = task_add.delay(latitude, longitude, base_date, base_time)
                 # 작업 ID를 반환하여 클라이언트에서 이후 작업을 계속하도록 유도
                 return JsonResponse({'task_id': task.id}, status=200)
-
-            latest_weather = Weather.objects.filter(
-                date_time=date_time_str, location=location).latest('recorded')
-            facts = parse_weather_data(latest_weather.data)
-            res = weatherman(facts, "informal", 100, "news flash", str(timezone.now()))
-            context = {
-                'gpt_weather': res,
-                'original_weather': json.dumps(facts),
-                'current_time': str(timezone.now())
-            }
-            return render(request, 'app/weather_cast.html', context)
+            else:
+                return JsonResponse({'status':'EXIST'},status=200)
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Invalid data'}, status=400)
-
     elif request.method == 'GET':
         latitude = request.GET.get('latitude')
         longitude = request.GET.get('longitude')
@@ -123,7 +113,6 @@ def index(request):
         if latitude and longitude:
             lat,lon = convert_to_xy(float(longitude),float(latitude))
             location = f"{lat},{lon}"
-
         if location and Weather.objects.filter(date_time=date_time_str, location=location).exists():
             latest_weather = Weather.objects.filter(
                 date_time=date_time_str, location=location).latest('recorded')
@@ -136,15 +125,14 @@ def index(request):
             }
             return render(request, 'app/weather_cast.html', context)
         else:
-            return render(request, 'app/loading.html', {})
-    return render(request,'app/loading.html',{})
-
+            return render(request,'app/loading.html',{})
+    return JsonResponse({'status': 'LOADING'}, status=200)
 
 def task_status(request, task_id):
     try:
         result = AsyncResult(task_id, app=app)  # Celery 앱 객체를 사용
         status = result.status
-        logger.debug(f"Task status for {task_id}: {status}")
+        logger.info(f"Task status for {task_id}: {status}")
         
         if status == 'SUCCESS':
             return JsonResponse({'status': 'SUCCESS', 'result': result.result})
