@@ -7,7 +7,7 @@
 <img width="1276" alt="image (15)" src="https://github.com/user-attachments/assets/d85e7ec2-ea2f-4c65-988b-9e4ebe41ed41" />
 
 <h3>🖥️ 개발 과정</h3>
-➡️ https://curly-cookie-e4a.notion.site/Get-location-ef51d356283a49db9b099b3ae37f3444
+➡️ https://curly-cookie-e4a.notion.site/gpt-44da1033f09b488da9114706ffb90105
 
 <h3>⛏️ 사용한 기술 스택</h3>
 <p> 언어 : Python, Javascript</p>
